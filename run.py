@@ -22,7 +22,6 @@ class Option(db.Model):
 
 class Vote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    poll_id = db.Column(db.Integer, db.ForeignKey('poll.id'), nullable=False)
     option_id = db.Column(db.Integer, db.ForeignKey('option.id'), nullable=False)
 
 
@@ -84,8 +83,44 @@ def show_poll_details(poll_id):
     try:
         poll = Poll.query.get(poll_id)
         if poll:
-            print(poll)
-            return jsonify({'message': 'poll detais'}), 200
+            return jsonify({
+                'id': poll.id, 
+                'name': poll.name, 
+                'content': poll.content,
+                'options': [{"id": option.id, "desc": option.desc} for option in poll.options]
+                }), 200
+    except Exception as e:
+        return jsonify({'Error': str(e)}), 500
+    
+
+# LIST OPTIONS
+@app.route('/api/polls/<int:poll_id>/options', methods=['GET'])
+def list_options(poll_id):
+    try:
+        poll = Poll.query.get(poll_id)
+        if poll:
+            return jsonify([{
+                'id': option.id,
+                'desc': option.desc
+            } for option in poll.options]), 200
+        else:
+            return jsonify({'Error': 'poll does not exists'}), 500
+    except Exception as e:
+        return jsonify({'Error': str(e)}), 500
+
+# VOTE
+@app.route('/api/polls/vote', methods=['POST'])
+def vote():
+    try:
+        data = request.get_json()
+        option = Option.query.get(data['option_id'])
+        if option:
+            vote = Vote(option_id=option)
+            db.session.add(vote)
+            db.session.commit()
+            return jsonify({'message': 'option voted!'}), 200
+        else:
+            return jsonify({'Error': 'this option does not exists'})
     except Exception as e:
         return jsonify({'Error': str(e)}), 500
 
